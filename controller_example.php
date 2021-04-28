@@ -5,27 +5,27 @@ ini_set("soap.wsdl_cache_enabled", WSDL_CACHE_NONE);
 class wsdlServiceController extends CController {
 
     public function actions() {
-        return array(
-            'wsdl' => array(
+        return [
+            'wsdl' => [
                 'class' => 'CWebServiceAction',
-                'serviceOptions' => array(
+                'serviceOptions' => [
                     'wsdlUrl' => 'http://localhost/wsdl/index.php?r=wsdlService/wsdl',
                     'serviceUrl' => 'http://localhost/wsdl/index.php?r=wsdlService/wsdl&ws=1'
-                ),
-            ),
-        );
+                ],
+            ],
+        ];
     }
 
     /**
-     * @param  string $id - id РєР»РёРµРЅС‚Р°
-     * @return string РѕС‚РІРµС‚
+     * @param  string $id - id клиента
+     * @return string ответ
      * @soap
      */
     public static function canceled($id) {
-        $model_data = TestModel::model()->find(array("condition" => "c_RequestId = '" . $id . "' and DateTimeStopUTC is null", "order" => "id desc"));
+        $model_data = TestModel::model()->find(["condition" => "c_RequestId = '" . $id . "' and DateTimeStopUTC is null", "order" => "id desc"]);
 
         if (count($model_data)) {
-            TestModel::model()->updateAll(array('c_DateTimeCanceled' => new CDbExpression('GETDATE()'), 'c_Answer' => TestModel::INFO_CANCELED), array("condition" => "RequestId = '" . $id . "' and DateTimeStop is null"));
+            TestModel::model()->updateAll(['c_DateTimeCanceled' => new CDbExpression('GETDATE()'), 'c_Answer' => TestModel::INFO_CANCELED], ["condition" => "RequestId = '" . $id . "' and DateTimeStop is null"]);
         } elseif (count($model_data)) {
             return TestModel::INFO_NOTFOUND;
         }
@@ -34,11 +34,11 @@ class wsdlServiceController extends CController {
     }
 
     /**
-     * @param  string $id - id РєР»РёРµРЅС‚Р°
-     * @param  string $phone - РЅРѕРјРµСЂ С‚РµР»РµС„РѕРЅР° РєР»РёРµРЅС‚Р°
-     * @param  string $first_name - РёРјСЏ РєР»РёРµРЅС‚Р°
-     * @param  string $middle_name - РѕС‚С‡РµСЃС‚РІРѕ РєР»РёРµРЅС‚Р°
-     * @return string РѕС‚РІРµС‚
+     * @param  string $id - id клиента
+     * @param  string $phone - номер телефона клиента
+     * @param  string $first_name - имя клиента
+     * @param  string $middle_name - отчество клиента
+     * @return string ответ
      * @soap
      */
     public static function addClient($id, $phone, $first_name, $middle_name) {
@@ -62,15 +62,15 @@ class wsdlServiceController extends CController {
             $p = preg_replace('/\D/', '', $phone);
             if (strlen($p) == 10 || strlen($p) == 11) {
                 $p10 = substr($p, strlen($p) - 10, 10);
-                // РµСЃР»Рё РІ РЅРѕРјРµСЂРµ РѕРґРёРЅР°РєРѕРІС‹Рµ С†РёС„СЂС‹ (10 СЃРїСЂР°РІР°)
+                // если в номере одинаковые цифры (10 справа)
                 if (count(array_unique(str_split($p10))) <= 2 || $p10[0] === "0" || $p10[0] === "7" || ($p10[0] . $p10[1]) === "89") {
                     continue;
                 }
-                //РєРѕСЂСЂРµРєС‚РёСЂСѓРµРј Р·РЅР°С‡РµРЅРёРµ
+                //корректируем значение
                 $p = '7' . $p10;
-                // Р·Р°РЅРѕСЃРёРј РІ РєРѕСЂСЂРµРєС‚РЅС‹Рµ
+                // заносим в корректные
                 $model->correct_phones[] = $p;
-                // РµСЃР»Рё Phone01Original РїСѓСЃС‚РѕР№, С‚Рѕ СЃС‚Р°РІРёРј РґР°РЅРЅС‹Р№ РЅРѕРјРµСЂ
+                // если Phone01Original пустой, то ставим данный номер
                 if (empty($model->Phone01Original)) {
                     $model->Phone01Original = $p;
                 }
@@ -81,21 +81,19 @@ class wsdlServiceController extends CController {
             $model->IsValidForDialer = 0;
             $model->SentToPhone = 0;
         } else {
-            // СѓР±РёСЂР°РµРј РґСѓР±Р»РёСЂСѓСЋС‰РёРµСЃСЏ РЅРѕРјРµСЂР°
             $model->correct_phones = array_unique($model->correct_phones);
-            //РїРµСЂРµРёРЅРґРµРєСЃРёСЂСѓРµРј
             $model->correct_phones = array_values($model->correct_phones);
 
-            // РґРѕРїРѕР»РЅСЏРµРј РјР°СЃСЃРёРІ РґРѕ 3 СЌР»РµРјРµРЅС‚РѕРІ РґР»СЏ С„СѓРЅРєС†РёРё list
+            // дополняем массив до 3 элементов для функции list
             while (count($model->correct_phones) < 4) {
                 $model->correct_phones[] = null;
             }
 
-            // Р·Р°РЅРѕСЃРёРј РІ СЃРѕРѕС‚РІРµС‚СЃРІСѓСЋС‰РёРµ РїРѕР»СЏ С‚Р°Р±Р»РёС†С‹
+            // заносим в соответсвующие поля таблицы
             list($model->Phone01, $model->Phone02, $model->Phone03) = $model->correct_phones;
 
-            // СѓРґР°Р»СЏРµРј РїСѓСЃС‚С‹Рµ РЅРѕРјРµСЂР°
-            $model->correct_phones = array_diff($model->correct_phones, array(''));
+            // удаляем пустые номера
+            $model->correct_phones = array_diff($model->correct_phones, []);
 
             $TimeZoneInfo = $model->getTimeZone($model->Phone01);
 
